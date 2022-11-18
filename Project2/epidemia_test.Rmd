@@ -1,0 +1,96 @@
+---
+title: ''
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+library(epidemia)
+library(lubridate)
+library(rstanarm)
+```
+
+Singapore Example
+```{r Prepare Data}
+
+covid_sg <- read.csv('../Data/Covid-19 SG Clean.csv')
+covid_sg <- covid_sg %>% mutate(ï..Date = dmy(ï..Date))
+                     
+dates_sg <- covid_sg$ï..Date 
+data_sg <- data.frame(city = "Singapore", community_cases = covid_sg$Daily.Local.transmission,
+                   date = covid_sg$ï..Date, imported_cases=covid_sg$Daily.Imported)
+
+t_total <- nrow(data_sg)
+print(t_total)
+```
+
+```{r}
+covid_si <- c(0.        , 0.00735205, 0.1041599 , 0.19569517, 0.19434086,
+       0.15325727, 0.10988444, 0.07563461, 0.05123553, 0.03458166,
+       0.02340621, 0.01594049, 0.01094272, 0.00757832, 0.00529647,
+       0.00373575, 0.00265875, 0.00190887, 0.00138209, 0.00100882)
+
+covid_si_norm <- covid_si / sum(covid_si)
+```
+
+
+```{r}
+# epi_rt -> Specifies model for r(t)
+rt <- epirt(formula = R(city, date) ~ 1 + rw(prior_scale = 0.01),
+            prior_intercept = normal(log(2), 0.2), link = 'log')
+
+# Fix generation time interval given by inf (this is just a probability vector)
+# This basically defines infection model
+inf <- epiinf(gen <- covid_si_norm)
+inf_ext <-  epiinf(gen=covid_si_norm, latent = TRUE,
+                   prior_aux = normal(10,2))
+
+
+# Obs distribution, offset(rep(1,93) -> ascertainment rate 100% but generally we can replace with some process
+# i2o is pi i.e the onset delay distribution
+obs <-  epiobs(formula = community_cases ~ 0 + offset(rep(1, 498)), link = "identity",i2o = rep(.25,4))
+
+
+args <- list(rt = rt, obs = obs, inf = inf, data = data_sg, iter = 2e3,
+             seed = 12345)
+args_ext <- args; 
+args_ext$inf <- inf_ext
+
+system.time(fm1 <- do.call(epim, args))
+system.time(fm2 <- do.call(epim, args_ext))
+```
+
+```{r}
+
+p <- plot_rt(fm1)
+p1 <- plot_obs(fm1, type = "cases")
+p2 <- plot_infections(fm1)
+
+```
+
+
+
+```{r}
+data("Flu1918")
+date <- as.Date("1918-01-01") + seq(0, along.with = c(NA, Flu1918$incidence))
+data <- data.frame(city = "Baltimore", cases = c(NA, Flu1918$incidence),
+                   date = date)
+```

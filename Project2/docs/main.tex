@@ -1,0 +1,80 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{COVID}
+\author{Tze Hong}
+\date{July 2021}
+
+\begin{document}
+
+\maketitle
+
+\section{Features of the model}
+
+This model accounts for several factors:
+\begin{itemize}
+  \item Dorm cases, Local - Unlinked cases and local linked cases are modelled separately
+  \item Imported cases can add to the daily infected individuals
+  \item Non pharmaceutical interventions can impact $R_e(t)$ the effective $R(t)$
+  \item Accounting for daily variation in number of cases detected based on number of tests / tests positivity rate
+\end{itemize}
+
+\section{Equations}
+
+\subsection{Notation}
+\begin{itemize}
+  \item $I_t$ - Number of newly infected individuals at time $t$. 
+  \item D - Dormitory, U - Unlinked, L - Linked
+  \item $g$ - Generation Time PMF values
+  \item $\gamma$ - Onset - Delay Time PMF values
+  \item $R_e(t)$ - Effective Rt
+  \item $\lambda_t$ - Qurantine Rate
+  \item $\alpha_t$ - Test capture rate. How likely we are to detect an infected individual as positive
+
+\end{itemize}
+\subsection{Latent Infection Process}
+
+% Dorm infection process
+$$I_t^D = \sum_{i=1}^{S} I_{t-i}^D * R_e^d(t-i) * g_{s-i} $$
+
+% Unlinked infection process
+$$I_t^U = \lambda_t \left[\sum_{i=1}^{S} (I_{t-i}^U * R_e^l(t-i)*g_{s-i}) + \epsilon_t * im_t \right] $$
+
+% linked infection process
+$$I_t^L = \frac{1-\lambda_t}{\lambda_t} * I_t^U $$
+
+\subsection{Mean Case Counts process}
+
+% Dorm case counts
+$$y_t^D = \alpha_t^D \sum_{i=1}^{K} y_{t-i}^D*\gamma_{t-i}^D$$
+
+% Unlinked case counts
+$$y_t^U = \alpha_t^U \sum_{i=1}^{K} y_{t-i}^U*\gamma_{t-i}^U$$
+
+% Linked case counts
+$$y_t^L = \alpha_t^L \sum_{i=1}^{K} y_{t-i}L*\gamma_{t-i}^L$$
+
+\subsection{Priors}
+$g$: $S$ Dimensional probability vector, Generation Time (Discrete) distribution PMF values
+\\
+$\gamma$: $K$ Dimensional probability vector Onset - Delay (Discrete) distribution PMF values
+
+$$R_e^D(t) \sim exp(GRW(\sigma=0.0035) + \beta*NPIs_t)$$
+
+$$\epsilon_t \sim beta(1,1)$$
+
+$$\alpha^D(t) \sim exp(GRW(\sigma=0.0035) + \eta^D*testRate_t)$$
+
+$$\alpha^U(t) \sim exp(GRW(\sigma=0.0035) + \eta^U*testRate_t)$$
+
+$$\alpha^L(t) \sim exp(GRW(\sigma=0.0035) + \eta^L*testRate_t)$$
+
+$$\lambda_t \sim exp(GRW(\sigma=0.0035) + \rho*qurantineRate_t)$$
+
+$$\beta \sim Normal(0,0.01)$$
+
+$$\eta \sim Normal(0,0.01)$$
+
+$$\rho \sim Normal(0,0.01)$$
+
+\end{document}

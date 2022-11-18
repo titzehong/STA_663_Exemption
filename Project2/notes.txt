@@ -1,0 +1,4 @@
+Some tools to experiment with:
+MLflow -> track trained models plus results
+Git -> just to store model version 
+DVC -> data and model versioning
